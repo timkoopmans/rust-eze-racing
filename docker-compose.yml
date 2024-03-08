@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: rusteze
+      POSTGRES_DB: rusteze
+    ports:
+      - "54321:5432"
