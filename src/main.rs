@@ -9,7 +9,7 @@ use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use tokio_postgres::NoTls;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use crate::db::{writer, reader};
+use crate::db::{writer, drivers_by_last_updated, max_speed_for_driver, max_speed_for_driver_in_timeframe};
 
 #[tokio::main]
 async fn main() {
@@ -32,10 +32,9 @@ async fn main() {
 
     // build our application with some routes
     let app = Router::new()
-        .route(
-            "/",
-            get(reader),
-        )
+        .route("/", get(drivers_by_last_updated))
+        .route("/driver/:driver_name/max_speed", get(max_speed_for_driver))
+        .route("/driver/:driver_name/max_speed/:start_time", get(max_speed_for_driver_in_timeframe))
         .with_state(pool);
 
     // run it

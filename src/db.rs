@@ -7,8 +7,10 @@ use bb8::{Pool, PooledConnection};
 use bb8_postgres::PostgresConnectionManager;
 use tokio_postgres::NoTls;
 use std::time::Instant;
+use axum::extract::Path;
 use tokio::time::{sleep, Duration};
 use crate::drivers::pick_random_name;
+use chrono::{DateTime, Utc};
 
 type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
 
@@ -31,7 +33,7 @@ impl<S> FromRequestParts<S> for DatabaseConnection
     }
 }
 
-pub async fn reader(
+pub async fn drivers_by_last_updated(
     State(pool): State<ConnectionPool>,
 ) -> Result<String, (StatusCode, String)> {
     let conn = pool.get().await.map_err(internal_error)?;
@@ -58,6 +60,61 @@ pub async fn reader(
     Ok(format!("{}\n---\nQuery Time: {:?}", drivers.join("\n"), query_time))
 }
 
+pub async fn max_speed_for_driver(
+    State(pool): State<ConnectionPool>,
+    driver_name: String,
+) -> Result<String, (StatusCode, String)> {
+    let conn = pool.get().await.map_err(internal_error)?;
+
+    let rows = conn
+        .query("SELECT max(top_speed) FROM racing_cars WHERE driver_name = $1", &[&driver_name])
+        .await
+        .map_err(internal_error)?;
+
+    if rows.is_empty() {
+        return Ok("No data available".to_string());
+    }
+    println!("First row: {:?}", rows[0]);
+
+    println!("Executed query, number of rows returned: {}", rows.len());
+
+
+    let max_speed: i32 = rows[0].try_get("max").unwrap_or(0);
+    println!("Max speed: {:?}", max_speed);
+
+    Ok(max_speed.to_string())
+
+    // match max_speed {
+    //     Some(speed) => Ok(speed.to_string()),
+    //     None => Ok("No data available".to_string()),
+    // }
+}
+
+pub async fn max_speed_for_driver_in_timeframe(
+    State(pool): State<ConnectionPool>,
+    Path((driver_name, start_time)): Path<(String, String)>,
+) -> Result<String, (StatusCode, String)> {
+    let conn = pool.get().await.map_err(internal_error)?;
+
+    // Parse the start_time string into a DateTime<Utc>
+    let start_time = DateTime::parse_from_rfc3339(&start_time)
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid start_time".to_string()))?
+        .with_timezone(&Utc);
+    let start_time: std::time::SystemTime = start_time.into();
+
+    let row = conn
+        .query_one("SELECT max(top_speed) FROM racing_cars WHERE driver_name = $1 AND last_updated > $2", &[&driver_name, &start_time])
+        .await
+        .map_err(internal_error)?;
+
+
+
+    let max_speed: i32 = row.try_get(0).unwrap();
+
+    Ok(max_speed.to_string())
+}
+
+
 pub async fn writer(pool: ConnectionPool) {
     let conn = pool.get().await.unwrap();
     loop {
@@ -70,7 +127,7 @@ pub async fn writer(pool: ConnectionPool) {
             last_updated)
             VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)",
             &[
-                &format!("Driver {}", pick_random_name()),
+                &format!("{}", pick_random_name()),
                 &(rand::random::<i32>().abs() % 251 + 50), // top_speed range: 50 - 300
                 &(rand::random::<i32>().abs() % 10 + 1), // acceleration range: 1 - 10
                 &(rand::random::<i32>().abs() % 5 + 1), // handling range: 1 - 5
