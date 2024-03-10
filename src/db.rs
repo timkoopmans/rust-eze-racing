@@ -1,14 +1,16 @@
+use std::time::Instant;
+
 use axum::{
     async_trait,
     extract::{FromRef, FromRequestParts, State},
     http::{request::Parts, StatusCode},
 };
+use axum::extract::Path;
 use bb8::{Pool, PooledConnection};
 use bb8_postgres::PostgresConnectionManager;
+use tokio::time::{Duration, sleep};
 use tokio_postgres::NoTls;
-use std::time::Instant;
-use axum::extract::Path;
-use tokio::time::{sleep, Duration};
+
 use crate::drivers::pick_random_name;
 
 type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
@@ -17,9 +19,9 @@ pub struct DatabaseConnection(PooledConnection<'static, PostgresConnectionManage
 
 #[async_trait]
 impl<S> FromRequestParts<S> for DatabaseConnection
-    where
-        ConnectionPool: FromRef<S>,
-        S: Send + Sync,
+where
+    ConnectionPool: FromRef<S>,
+    S: Send + Sync,
 {
     type Rejection = (StatusCode, String);
 
@@ -40,23 +42,33 @@ pub async fn drivers_by_last_updated(
     let start_time = Instant::now();
 
     let rows = conn
-        .query("SELECT \
-        driver_name, \
-        top_speed \
-        FROM racing_cars \
-        ORDER BY last_updated DESC LIMIT 5", &[])
+        .query(
+            "SELECT 
+        driver_name,
+        top_speed
+        FROM racing_cars
+        ORDER BY last_updated DESC LIMIT 5",
+            &[],
+        )
         .await
         .map_err(internal_error)?;
 
     let query_time = start_time.elapsed();
 
-    let drivers: Vec<String> = rows.iter().map(|row| {
-        let driver_name: String = row.try_get("driver_name").unwrap();
-        let top_speed: i32 = row.try_get("top_speed").unwrap();
-        format!("{}: {}", driver_name, top_speed)
-    }).collect();
+    let drivers: Vec<String> = rows
+        .iter()
+        .map(|row| {
+            let driver_name: String = row.try_get("driver_name").unwrap();
+            let top_speed: i32 = row.try_get("top_speed").unwrap();
+            format!("{}: {}", driver_name, top_speed)
+        })
+        .collect();
 
-    Ok(format!("{}\n---\nQuery Time: {:?}", drivers.join("\n"), query_time))
+    Ok(format!(
+        "{}\n---\nQuery Time: {:?}",
+        drivers.join("\n"),
+        query_time
+    ))
 }
 
 pub async fn max_speed_for_driver(
@@ -66,13 +78,19 @@ pub async fn max_speed_for_driver(
     let conn = pool.get().await.map_err(internal_error)?;
 
     if driver_name.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "driver_name cannot be empty".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "driver_name cannot be empty".to_string(),
+        ));
     }
 
     let start_time = Instant::now();
 
     let row = conn
-        .query_one("SELECT max(top_speed) FROM racing_cars WHERE driver_name = $1", &[&driver_name])
+        .query_one(
+            "SELECT max(top_speed) FROM racing_cars WHERE driver_name = $1",
+            &[&driver_name],
+        )
         .await
         .map_err(internal_error)?;
 
@@ -85,7 +103,7 @@ pub async fn max_speed_for_driver(
     let max_speed: Option<i32> = row.try_get("max").ok();
 
     match max_speed {
-        Some(speed) => Ok(format!("{}\n---\nQuery Time: {:?}", speed.to_string(), query_time)),
+        Some(speed) => Ok(format!("{}\n---\nQuery Time: {:?}", speed, query_time)),
         None => Ok("No data available".to_string()),
     }
 }
@@ -106,7 +124,10 @@ pub async fn max_speed_for_driver_in_timeframe(
     let start_time = Instant::now();
 
     let row = conn
-        .query_one("SELECT max(top_speed) FROM racing_cars WHERE driver_name = $1 AND last_updated > $2", &[&driver_name, &since_time])
+        .query_one(
+            "SELECT max(top_speed) FROM racing_cars WHERE driver_name = $1 AND last_updated > $2",
+            &[&driver_name, &since_time],
+        )
         .await
         .map_err(internal_error)?;
 
@@ -114,30 +135,30 @@ pub async fn max_speed_for_driver_in_timeframe(
 
     let max_speed: i32 = row.try_get(0).unwrap();
 
-    Ok(format!("{}\n---\nQuery Time: {:?}", max_speed.to_string(), query_time))
+    Ok(format!("{}\n---\nQuery Time: {:?}", max_speed, query_time))
 }
-
 
 pub async fn writer(pool: ConnectionPool) {
     let conn = pool.get().await.unwrap();
     let mut counter = 0u64;
     let mut start_time = Instant::now();
     loop {
-        let result = conn.execute(
-            "INSERT INTO racing_cars (
+        let result = conn
+            .execute(
+                "INSERT INTO racing_cars (
             driver_name,
             top_speed,
             acceleration,
             handling,
             last_updated)
             VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)",
-            &[
-                &format!("{}", pick_random_name()),
-                &(rand::random::<i32>().abs() % 251 + 50), // top_speed range: 50 - 300
-                &(rand::random::<i32>().abs() % 10 + 1), // acceleration range: 1 - 10
-                &(rand::random::<i32>().abs() % 5 + 1), // handling range: 1 - 5
-            ],
-        )
+                &[
+                    &pick_random_name().to_string(),
+                    &(rand::random::<i32>().abs() % 251 + 50), // top_speed range: 50 - 300
+                    &(rand::random::<i32>().abs() % 10 + 1),   // acceleration range: 1 - 10
+                    &(rand::random::<i32>().abs() % 5 + 1),    // handling range: 1 - 5
+                ],
+            )
             .await;
 
         match result {
@@ -160,8 +181,8 @@ pub async fn writer(pool: ConnectionPool) {
 }
 
 fn internal_error<E>(err: E) -> (StatusCode, String)
-    where
-        E: std::error::Error,
+where
+    E: std::error::Error,
 {
     (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
 }

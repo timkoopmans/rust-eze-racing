@@ -1,15 +1,15 @@
-mod db;
-mod drivers;
-
-use axum::{
-    routing::get,
-    Router,
-};
+use axum::{Router, routing::get};
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use tokio_postgres::NoTls;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use crate::db::{writer, drivers_by_last_updated, max_speed_for_driver, max_speed_for_driver_in_timeframe};
+
+use crate::db::{
+    drivers_by_last_updated, max_speed_for_driver, max_speed_for_driver_in_timeframe, writer,
+};
+
+mod db;
+mod drivers;
 
 #[tokio::main]
 async fn main() {
@@ -22,9 +22,11 @@ async fn main() {
         .init();
 
     // set up connection pool
-    let manager =
-        PostgresConnectionManager::new_from_stringlike("host=localhost user=postgres password=rusteze port=5432 dbname=rusteze", NoTls)
-            .unwrap();
+    let manager = PostgresConnectionManager::new_from_stringlike(
+        "host=localhost user=postgres password=rusteze port=5432 dbname=rusteze",
+        NoTls,
+    )
+        .unwrap();
     let pool = Pool::builder().build(manager).await.unwrap();
 
     // spawn the background task
@@ -34,7 +36,10 @@ async fn main() {
     let app = Router::new()
         .route("/", get(drivers_by_last_updated))
         .route("/driver/:driver_name/max_speed", get(max_speed_for_driver))
-        .route("/driver/:driver_name/max_speed/:since_time", get(max_speed_for_driver_in_timeframe))
+        .route(
+            "/driver/:driver_name/max_speed/:since_time",
+            get(max_speed_for_driver_in_timeframe),
+        )
         .with_state(pool);
 
     // run it
