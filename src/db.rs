@@ -120,6 +120,8 @@ pub async fn max_speed_for_driver_in_timeframe(
 
 pub async fn writer(pool: ConnectionPool) {
     let conn = pool.get().await.unwrap();
+    let mut counter = 0u64;
+    let mut start_time = Instant::now();
     loop {
         let result = conn.execute(
             "INSERT INTO racing_cars (
@@ -139,8 +141,18 @@ pub async fn writer(pool: ConnectionPool) {
             .await;
 
         match result {
-            Ok(_) => tracing::debug!("writing data"),
+            Ok(_) => {
+                tracing::debug!("writing data");
+                counter += 1;
+            }
             Err(e) => tracing::error!("Error writing data: {}", e),
+        }
+
+        if start_time.elapsed() >= Duration::from_secs(1) {
+            let rate = counter as f64 / start_time.elapsed().as_secs_f64();
+            tracing::info!("Rows written per second: {}", rate);
+            counter = 0;
+            start_time = Instant::now();
         }
 
         sleep(Duration::from_micros(1)).await;

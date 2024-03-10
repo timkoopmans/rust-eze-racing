@@ -23,7 +23,7 @@ async fn main() {
 
     // set up connection pool
     let manager =
-        PostgresConnectionManager::new_from_stringlike("host=localhost user=postgres password=rusteze port=54321 dbname=rusteze", NoTls)
+        PostgresConnectionManager::new_from_stringlike("host=localhost user=postgres password=rusteze port=5432 dbname=rusteze", NoTls)
             .unwrap();
     let pool = Pool::builder().build(manager).await.unwrap();
 

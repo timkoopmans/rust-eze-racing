@@ -7,4 +7,4 @@ services:
       POSTGRES_PASSWORD: rusteze
       POSTGRES_DB: rusteze
     ports:
-      - "54321:5432"
+      - "5432:5432"
