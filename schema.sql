@@ -5,7 +5,7 @@ CREATE TABLE racing_cars
     top_speed    INT,
     acceleration INT,
     handling     INT,
-    last_updated TIMESTAMP
+last_updated TIMESTAMP
 );
 
 TRUNCATE TABLE racing_cars;

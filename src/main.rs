@@ -34,7 +34,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(drivers_by_last_updated))
         .route("/driver/:driver_name/max_speed", get(max_speed_for_driver))
-        .route("/driver/:driver_name/max_speed/:start_time", get(max_speed_for_driver_in_timeframe))
+        .route("/driver/:driver_name/max_speed/:since_time", get(max_speed_for_driver_in_timeframe))
         .with_state(pool);
 
     // run it
