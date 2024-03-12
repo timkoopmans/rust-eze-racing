@@ -176,7 +176,7 @@ pub async fn writer(pool: ConnectionPool) {
             start_time = Instant::now();
         }
 
-        sleep(Duration::from_micros(1)).await;
+        // sleep(Duration::from_micros(1)).await;
     }
 }
 

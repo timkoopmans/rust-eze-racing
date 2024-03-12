@@ -6,23 +6,28 @@ use uuid::Uuid;
 use crate::drivers::pick_random_name;
 use chrono::Utc;
 use scylla::frame::value::CqlTimestamp;
+use anyhow::Result;
+use scylla::prepared_statement::PreparedStatement;
 
-pub async fn writer(session: Arc<Session>) {
+pub async fn writer(session: Arc<Session>) -> Result<()> {
     let mut counter = 0u64;
     let mut start_time = Instant::now();
 
-    loop {
-        // TODO: Should I be using prepared statements here?
-        // TODO: Should I maybe batch statements?
-        let result = session.query(
-            "INSERT INTO demo.racing_car_metrics (
+    let prepared: PreparedStatement = session
+        .prepare("INSERT INTO demo.racing_car_metrics (
                     id,
                     driver_name,
                     top_speed,
                     acceleration,
                     handling,
                     last_updated)
-                    VALUES (?, ?, ?, ?, ?, ?)",
+                    VALUES (?, ?, ?, ?, ?, ?)")
+        .await?;
+
+    loop {
+        // TODO: Should I maybe batch statements?
+        let result = session.execute(
+            &prepared,
             (
                 Uuid::new_v4(),
                 &pick_random_name().to_string(),
@@ -48,6 +53,6 @@ pub async fn writer(session: Arc<Session>) {
             start_time = Instant::now();
         }
 
-        sleep(Duration::from_micros(1)).await;
+        // sleep(Duration::from_micros(1)).await;
     }
 }
