@@ -1,6 +1,8 @@
+use std::sync::Arc;
 use axum::{Router, routing::get};
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
+use scylla::{Session, SessionBuilder};
 use tokio_postgres::NoTls;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -10,6 +12,7 @@ use crate::db::{
 
 mod db;
 mod drivers;
+mod sdb;
 
 #[tokio::main]
 async fn main() {
@@ -30,7 +33,15 @@ async fn main() {
     let pool = Pool::builder().build(manager).await.unwrap();
 
     // spawn the background task
-    tokio::spawn(writer(pool.clone()));
+    // tokio::spawn(writer(pool.clone()));
+
+    // TODO: Do I need to use a connection pool for ScyllaDB?
+    let session: Arc<Session> = Arc::new(SessionBuilder::new()
+        .known_node("localhost:9042")
+        .build()
+        .await.unwrap());
+
+    tokio::spawn(sdb::writer(session));
 
     // build our application with some routes
     let app = Router::new()
