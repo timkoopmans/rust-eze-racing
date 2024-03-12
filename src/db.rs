@@ -46,7 +46,7 @@ pub async fn drivers_by_last_updated(
             "SELECT 
         driver_name,
         top_speed
-        FROM racing_cars
+        FROM racing_car_metrics
         ORDER BY last_updated DESC LIMIT 5",
             &[],
         )
@@ -88,7 +88,7 @@ pub async fn max_speed_for_driver(
 
     let row = conn
         .query_one(
-            "SELECT max(top_speed) FROM racing_cars WHERE driver_name = $1",
+            "SELECT max(top_speed) FROM racing_car_metrics WHERE driver_name = $1",
             &[&driver_name],
         )
         .await
@@ -125,7 +125,7 @@ pub async fn max_speed_for_driver_in_timeframe(
 
     let row = conn
         .query_one(
-            "SELECT max(top_speed) FROM racing_cars WHERE driver_name = $1 AND last_updated > $2",
+            "SELECT max(top_speed) FROM racing_car_metrics WHERE driver_name = $1 AND last_updated > $2",
             &[&driver_name, &since_time],
         )
         .await
@@ -145,7 +145,7 @@ pub async fn writer(pool: ConnectionPool) {
     loop {
         let result = conn
             .execute(
-                "INSERT INTO racing_cars (
+                "INSERT INTO racing_car_metrics (
             driver_name,
             top_speed,
             acceleration,
