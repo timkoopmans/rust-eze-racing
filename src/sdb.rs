@@ -48,13 +48,12 @@ pub async fn writer(session: Arc<Session>) -> Result<()> {
             match result {
                 Ok(_) => {
                     tracing::debug!("writing data");
+                    counter += 1000;
                 }
                 Err(e) => tracing::error!("Error writing data: {}", e),
             }
         }
-
-        counter += 1;
-
+        
         if start_time.elapsed() >= Duration::from_secs(1) {
             let rate = counter as f64 / start_time.elapsed().as_secs_f64();
             tracing::info!("Rows written per second: {}", rate);
