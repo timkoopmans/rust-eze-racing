@@ -7,10 +7,11 @@ services:
       POSTGRES_PASSWORD: rusteze
       POSTGRES_DB: rusteze
     ports:
-      - "5432:5432"
+      - 5432:5432
   scylla:
     image: scylladb/scylla
     container_name: scylla
     ports:
       - 9042:9042
+      - 9180:9180
     restart: always
