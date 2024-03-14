@@ -8,9 +8,41 @@ services:
       POSTGRES_DB: rusteze
     ports:
       - "5432:5432"
-  scylla:
+  scylladb1:
     image: scylladb/scylla
-    container_name: scylla
+    container_name: scylladb1
+    expose:
+      - "19042"
+      - "7000"
     ports:
-      - 9042:9042
+      - "9041:9042"
     restart: always
+    command:
+      - --smp 1
+      - --reactor-backend=epoll
+  scylladb2:
+    image: scylladb/scylla
+    container_name: scylladb2
+    expose:
+      - "19042"
+      - "7000"
+    ports:
+      - "9042:9042"
+    restart: always
+    command:
+      - --seeds=scylladb1
+      - --smp 1
+      - --reactor-backend=epoll
+  scylladb3:
+    image: scylladb/scylla
+    container_name: scylladb3
+    expose:
+      - "19042"
+      - "7000"
+    ports:
+      - "9043:9042"
+    restart: always
+    command:
+      - --seeds=scylladb1
+      - --smp 1
+      - --reactor-backend=epoll

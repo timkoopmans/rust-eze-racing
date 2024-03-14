@@ -1,6 +1,6 @@
 CREATE KEYSPACE IF NOT EXISTS demo WITH REPLICATION =
     { 'class' : 'NetworkTopologyStrategy',
-        'replication_factor' : 1 };
+        'replication_factor' : 3 };
 DROP KEYSPACE demo;
 USE demo;
 
