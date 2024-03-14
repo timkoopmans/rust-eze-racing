@@ -37,7 +37,7 @@ async fn main() {
 
     // TODO: Do I need to use a connection pool for ScyllaDB?
     let session: Arc<Session> = Arc::new(SessionBuilder::new()
-        .known_node("localhost:9042")
+        .known_nodes(vec!["0.0.0.0:9041", "0.0.0.0:9042", "0.0.0.0:9043"])
         .build()
         .await.unwrap());
 
