@@ -1,16 +1,9 @@
-use std::sync::Arc;
-use axum::{Router, routing::get};
-use bb8::Pool;
-use bb8_postgres::PostgresConnectionManager;
+use axum::{routing::get, Router};
 use scylla::{Session, SessionBuilder};
-use tokio_postgres::NoTls;
+use std::sync::Arc;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use crate::sdb::{drivers_by_last_updated, max_speed_for_driver, max_speed_for_driver_in_timeframe};
 
-use crate::db::{
-    drivers_by_last_updated, max_speed_for_driver, max_speed_for_driver_in_timeframe, writer,
-};
-
-mod db;
 mod drivers;
 mod sdb;
 
@@ -24,24 +17,16 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // set up connection pool
-    let manager = PostgresConnectionManager::new_from_stringlike(
-        "host=localhost user=postgres password=rusteze port=5432 dbname=rusteze",
-        NoTls,
-    )
-        .unwrap();
-    let pool = Pool::builder().build(manager).await.unwrap();
-
-    // spawn the background task
-    tokio::spawn(writer(pool.clone()));
-
     // TODO: Do I need to use a connection pool for ScyllaDB?
-    let session: Arc<Session> = Arc::new(SessionBuilder::new()
-        .known_nodes(vec!["0.0.0.0:9041", "0.0.0.0:9042", "0.0.0.0:9043"])
-        .build()
-        .await.unwrap());
+    let session: Arc<Session> = Arc::new(
+        SessionBuilder::new()
+            .known_nodes(vec!["0.0.0.0:9041", "0.0.0.0:9042", "0.0.0.0:9043"])
+            .build()
+            .await
+            .unwrap(),
+    );
 
-    tokio::spawn(sdb::writer(session));
+    tokio::spawn(sdb::writer(session.clone()));
 
     // build our application with some routes
     let app = Router::new()
@@ -51,7 +36,7 @@ async fn main() {
             "/driver/:driver_name/max_speed/:since_time",
             get(max_speed_for_driver_in_timeframe),
         )
-        .with_state(pool);
+        .with_state(session);
 
     // run it
     let listener = tokio::net::TcpListener::bind("127.0.0.1:8000")
