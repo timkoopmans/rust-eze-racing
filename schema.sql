@@ -1,6 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-CREATE TABLE racing_car_metrics
+DROP TABLE IF EXISTS racing_car_metrics;
+CREATE TABLE IF NOT EXISTS racing_car_metrics
 (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     driver_name  VARCHAR(255),
@@ -10,7 +11,27 @@ CREATE TABLE racing_car_metrics
     last_updated TIMESTAMP
 );
 
-DROP TABLE racing_car_metrics;
+SELECT
+    driver_name,
+    top_speed
+FROM racing_car_metrics
+ORDER BY last_updated DESC LIMIT 5;
+
+CREATE INDEX idx_racing_cars_last_updated ON racing_car_metrics (last_updated DESC);
+DROP INDEX idx_racing_cars_last_updated;
+
+SELECT max(top_speed) FROM racing_car_metrics WHERE driver_name = 'Stacy';
+
+CREATE INDEX idx_driver_name ON racing_car_metrics (driver_name);
+DROP INDEX idx_driver_name;
+
+SELECT max(top_speed)
+FROM racing_car_metrics
+WHERE driver_name = 'Stacy'
+  AND last_updated > (NOW() - INTERVAL '5 seconds');
+
+CREATE INDEX idx_driver_name_last_updated ON racing_car_metrics (driver_name, last_updated);
+DROP INDEX idx_driver_name_last_updated;
 
 DO
 $$
@@ -29,11 +50,7 @@ $$
     END
 $$;
 
-CREATE INDEX idx_racing_cars_last_updated ON racing_car_metrics (last_updated DESC);
-DROP INDEX idx_racing_cars_last_updated;
+
 
 CREATE INDEX idx_driver_name ON racing_car_metrics (driver_name);
 DROP INDEX idx_driver_name;
-
-CREATE INDEX idx_driver_name_last_updated ON racing_car_metrics (driver_name, last_updated);
-DROP INDEX idx_driver_name_last_updated;
