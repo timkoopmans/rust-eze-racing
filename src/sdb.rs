@@ -14,6 +14,7 @@ pub async fn writer(session: Arc<Session>) {
     loop {
         // TODO: Should I be using prepared statements here?
         // TODO: Should I maybe batch statements?
+        // TODO: How can I avoid prefixing the keyspace in all my queries?
         let result = session.query(
             "INSERT INTO demo.racing_car_metrics (
                     id,

@@ -33,7 +33,7 @@ async fn main() {
     let pool = Pool::builder().build(manager).await.unwrap();
 
     // spawn the background task
-    // tokio::spawn(writer(pool.clone()));
+    tokio::spawn(writer(pool.clone()));
 
     // TODO: Do I need to use a connection pool for ScyllaDB?
     let session: Arc<Session> = Arc::new(SessionBuilder::new()

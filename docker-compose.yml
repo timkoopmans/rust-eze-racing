@@ -19,7 +19,9 @@ services:
     restart: always
     command:
       - --smp 1
+#      TODO: std::runtime_error The most common cause is not enough request capacity in /proc/sys/fs/aio-max-nr.
       - --reactor-backend=epoll
+#      TODO: what about --overprovisioned and developer-mode?
   scylladb2:
     image: scylladb/scylla
     container_name: scylladb2
